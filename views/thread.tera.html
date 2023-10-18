@@ -1,0 +1,13 @@
+{% import "macros.tera.html" as macros %}
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>cornchan {{ thread.id }}</title>
+  </head>
+  <body>
+    {{ macros::thread(thread=thread) }}
+  </body>
+</html>

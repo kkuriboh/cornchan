@@ -1,0 +1,32 @@
+{% macro thread(thread) %}
+<div>
+  <header>
+    <nav>
+      <ul style="display: flex; gap: 1rem">
+        <li>{{ thread.id }}</li>
+        <li>{{ thread.timestamp }}</li>
+      </ul>
+    </nav>
+    <h3>{{ thread.title }}</h3>
+  </header>
+  <div>
+    <div>
+      <img src="/{{ thread.image_1 }}" />
+      <img src="/{{ thread.image_2 }}" />
+      <img src="/{{ thread.image_3 }}" />
+    </div>
+
+    <p>{{ thread.content }}</p>
+  </div>
+</div>
+{% endmacro %}
+<!---->
+{% macro board_list(boards) %}
+<nav>
+  <a href="/">Π</a>
+  <a href="/rules">rules</a>
+  {% for board in boards %}
+  <a href="/boards/{{ board.slug }}">{{ board.name }}</a>
+  {% endfor %}
+</nav>
+{% endmacro %}

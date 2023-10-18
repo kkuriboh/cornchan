@@ -1,0 +1,75 @@
+{% import "macros.tera.html" as macros %}
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>new thread</title>
+    <link rel="stylesheet" href="/index.css" />
+
+    <style>
+      form {
+        display: grid;
+        width: fit-content;
+        gap: 0.5rem;
+      }
+      form * {
+        display: flex;
+        gap: 1.5rem;
+        justify-content: space-between;
+      }
+      form button {
+        padding: 0.4rem;
+        justify-content: center;
+      }
+    </style>
+  </head>
+  <body>
+    {{ macros::board_list(boards=boards) }}
+
+    <form
+      action="/thread/{{ board.slug }}"
+      method="post"
+      enctype="multipart/form-data"
+      id="f"
+    >
+      <label>
+        nickname
+        <input
+          id="nickname"
+          name="nickname"
+          type="text"
+          placeholder="Anonymous"
+        />
+      </label>
+      <label>
+        title
+        <input id="title" name="title" type="text" required />
+      </label>
+      <label>
+        content
+        <textarea
+          name="content"
+          id="content"
+          required
+          cols="30"
+          rows="10"
+        ></textarea>
+      </label>
+      <label>
+        image 1
+        <input id="image_1" name="image_1" type="file" />
+      </label>
+      <label>
+        image 2
+        <input id="image_2" name="image_2" type="file" />
+      </label>
+      <label>
+        image 3
+        <input id="image_3" name="image_3" type="file" />
+      </label>
+      <button type="submit">post</button>
+    </form>
+  </body>
+</html>

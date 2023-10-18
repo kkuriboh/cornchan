@@ -1,0 +1,23 @@
+{% import "macros.tera.html" as macros %}
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ board.name }}</title>
+    <link rel="stylesheet" href="/index.css" />
+  </head>
+  <body>
+    {{ macros::board_list(boards=boards) }}
+    <h1>{{ board.name }}</h1>
+    <a href="/thread/{{ board.slug }}">new thread</a>
+    <p>{{ board.description }}</p>
+
+    {% for thread in threads %}
+    <!---->
+    {{ macros::thread(thread=thread) }}
+    <!---->
+    {% endfor %}
+  </body>
+</html>

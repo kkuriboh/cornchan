@@ -1,0 +1,45 @@
+{% import "macros.tera.html" as macros %}
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>rules / TOS</title>
+    <link rel="stylesheet" href="/index.css" />
+  </head>
+  <body>
+    {{ macros::board_list(boards=boards) }}
+
+    <h1>Rules / TOS</h1>
+    <ol>
+      <li>Fuck around and find out</li>
+      <li>Mods/admins may ban you for any reason they feel valid</li>
+      <li>
+        IPs are stored as hashes on every post, just so we can ban people from
+        the platform
+      </li>
+      <li>Bans are not permanent, but they can last for long</li>
+      <li>
+        If not informed to the modderation team, any kind of advertisement will
+        be removed.
+      </li>
+    </ol>
+    <h2>Avoid the following things</h2>
+    <ul>
+      <li>
+        Complaining about poor image quality. If that bothers you, consider
+        donating us a server with petabytes of storage.
+      </li>
+      <li>
+        Complaining about CSS styling or whatever related to the cornchan
+        internals. Being minimal is a (software) design choice and one of the
+        things that make this website so beautiful.
+      </li>
+      <li>
+        If you don't wanna get banned, just don't be a jerk and stay close to
+        the topic.
+      </li>
+    </ul>
+  </body>
+</html>
