@@ -9,16 +9,16 @@ pub fn current_timestamp() -> u64 {
     }
 }
 
-pub fn slugify(s: &str) -> String {
-    let mut ret = String::new();
-
-    for c in s.trim().chars() {
-        if [' ', '\r', '\n', '\t'].contains(&c) {
-            ret.push('_')
-        } else {
-            ret.push(c);
-        }
-    }
-
-    ret
-}
+// pub fn slugify(s: &str) -> String {
+//     let mut ret = String::new();
+//
+//     for c in s.trim().chars() {
+//         if [' ', '\r', '\n', '\t'].contains(&c) {
+//             ret.push('_')
+//         } else {
+//             ret.push(c);
+//         }
+//     }
+//
+//     ret
+// }

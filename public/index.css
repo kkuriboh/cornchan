@@ -3,3 +3,14 @@
   color: #f5f5f5;
   box-sizing: border-box;
 }
+
+.thread-img {
+  outline: 1px solid chartreuse;
+}
+
+.btn {
+  background-color: lightslategray;
+  padding: 0.4em;
+  font-weight: bold;
+  cursor: pointer;
+}

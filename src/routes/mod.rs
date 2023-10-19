@@ -22,15 +22,14 @@ type AppState = &'static _AppState;
 
 pub fn make_routes(state: _AppState) -> Router {
     let handle_404: fn() -> _ = || async { (StatusCode::NOT_FOUND, "Not found") };
-    let service = handle_404.into_service();
-    let serve_dir = ServeDir::new("public").not_found_service(service);
+    let serve_dir = ServeDir::new("public").not_found_service(handle_404.into_service());
 
     let app_state: AppState = Box::leak(Box::new(state));
 
     let with_banned_users = Router::new()
-        .route("/thread/:board", get(new_thread_html))
-        .route("/thread/:board", post(new_thread))
-        .route("/thread/:board/:parent_thread/comment", post(make_comment))
+        .route("/:board/thread", get(new_thread_html))
+        .route("/:board/thread", post(new_thread))
+        .route("/:board/thread/:parent_thread/comment", post(make_comment))
         .layer(axum::middleware::from_fn_with_state(
             app_state,
             check_for_banned_ips,
@@ -39,9 +38,12 @@ pub fn make_routes(state: _AppState) -> Router {
     Router::new()
         .route("/", get(index))
         .route("/rules", get(rules))
-        .route("/boards/:board", get(board))
-        .route("/boards/:board/:thread_id", get(thread_html))
+        .route(
+            "/:board",
+            get(board).fallback_service(handle_404.into_service()),
+        )
+        .route("/:board/:thread_id", get(thread_html))
+        .nest_service("/public", serve_dir)
         .merge(with_banned_users)
         .with_state(app_state)
-        .fallback_service(serve_dir)
 }

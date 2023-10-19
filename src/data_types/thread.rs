@@ -1,5 +1,3 @@
-use std::time::SystemTime;
-
 use serde::{Deserialize, Serialize};
 
 use crate::traits::Id;
@@ -10,7 +8,7 @@ pub struct ThreadPayload {
     pub nickname: String,
     pub title: String,
     pub content: String,
-    pub timestamp: SystemTime,
+    pub timestamp: u64,
     pub board: String,
     pub image_1: Option<String>,
     pub image_2: Option<String>,
@@ -31,11 +29,22 @@ pub enum Thread {
 impl Id for Thread {
     fn ident(&self) -> String {
         match self {
-            Thread::Parent(ThreadPayload { id, board, .. }) => format!("thread:{board}:{id}"),
+            Thread::Parent(ThreadPayload {
+                id,
+                board,
+                timestamp,
+                ..
+            }) => format!("thread:{board}:{timestamp}:{id}",),
             Thread::Comment {
                 parent_thread,
-                payload: ThreadPayload { id, board, .. },
-            } => format!("thread:{board}:{id}:{parent_thread}"),
+                payload:
+                    ThreadPayload {
+                        id,
+                        board,
+                        timestamp,
+                        ..
+                    },
+            } => format!("thread:{board}:{timestamp}:{id}:{parent_thread}",),
         }
     }
 }

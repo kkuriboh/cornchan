@@ -1,5 +1,3 @@
-use std::time::SystemTime;
-
 use anyhow::Context;
 use axum::{
     extract::{Path, State},
@@ -13,6 +11,7 @@ use crate::{
     data_types::*,
     db::Keys,
     error::{AppError, HtmlResult},
+    general_helpers::current_timestamp,
     traits::Id,
 };
 
@@ -32,19 +31,29 @@ pub async fn rules(State(state): State<AppState>) -> HtmlResult {
 
 pub async fn board(State(state): State<AppState>, Path(board_slug): Path<String>) -> HtmlResult {
     let mut con = state.redis.get_tokio_connection().await?;
-    let board: String = con
-        .hget(Keys::BOARDS_KEY, format!("board:{board_slug}"))
+    // TODO: 404 on invalid board
+    let board = con
+        .hget::<_, _, String>(Keys::BOARDS_KEY, format!("board:{board_slug}"))
         .await?;
     let board = serde_json::from_str::<boards::Board>(&board)?;
 
+    // TODO: sorting on the database + cursor pagination
     let mut threads_iter = con
-        .hscan_match::<_, _, (String, String)>(Keys::THREADS_KEY, format!("thread:{board_slug}:*"))
+        .hscan_match::<_, _, ((), String)>(Keys::THREADS_KEY, format!("thread:{board_slug}:*"))
         .await?;
 
     let mut threads = Vec::new();
     while let Some((_, ref thread)) = threads_iter.next_item().await {
         threads.push(serde_json::from_str::<thread::Thread>(thread)?);
     }
+
+    threads.sort_by(|left, right| {
+        let extract_timestamp = |x: &thread::Thread| match x {
+            thread::Thread::Parent(payload) => payload.timestamp,
+            thread::Thread::Comment { payload, .. } => payload.timestamp,
+        };
+        extract_timestamp(right).cmp(&extract_timestamp(left))
+    });
 
     let mut context = state.tera_context.clone();
     context.insert("board", &board);
@@ -65,8 +74,8 @@ pub async fn thread_html(
         .await?;
     let board = serde_json::from_str::<boards::Board>(&board)?;
 
-    let thread = con
-        .hscan_match::<_, _, String>(
+    let (_, thread) = con
+        .hscan_match::<_, _, ((), String)>(
             Keys::THREADS_KEY,
             format!("thread:{board_slug}:*:{thread_id}"),
         )
@@ -74,6 +83,7 @@ pub async fn thread_html(
         .next_item()
         .await
         .context("thread does not exist")?;
+    let thread = serde_json::from_str::<thread::Thread>(&thread)?;
 
     let mut context = state.tera_context.clone();
     context.insert("board", &board);
@@ -100,9 +110,9 @@ pub async fn new_thread_html(
     Ok(Html(html))
 }
 
-#[derive(TryFromMultipart, Debug)]
+#[derive(TryFromMultipart)]
 pub struct NewThreadFormBody {
-    nickname: Option<String>,
+    nickname: String,
     title: String,
     content: String,
     image_1: NamedTempFile,
@@ -122,11 +132,15 @@ pub async fn new_thread(
 
     let thread = thread::Thread::Parent(thread::ThreadPayload {
         id,
-        nickname: data.nickname.unwrap_or(String::from("Anonymous")),
+        nickname: if data.nickname.is_empty() {
+            String::from("Anonymous")
+        } else {
+            data.nickname
+        },
         title: data.title,
         content: data.content,
         board: board.clone(),
-        timestamp: SystemTime::now(),
+        timestamp: current_timestamp(),
         image_1: paths.get(0).cloned(),
         image_2: paths.get(1).cloned(),
         image_3: paths.get(2).cloned(),
@@ -139,7 +153,7 @@ pub async fn new_thread(
     )
     .await?;
 
-    Ok(Redirect::to(&format!("/boards/{board}")))
+    Ok(Redirect::to(&format!("/{board}")))
 }
 
 pub async fn make_comment(
@@ -156,11 +170,15 @@ pub async fn make_comment(
         parent_thread,
         payload: thread::ThreadPayload {
             id,
-            nickname: data.nickname.unwrap_or(String::from("Anonymous")),
+            nickname: if data.nickname.is_empty() {
+                String::from("Anonymous")
+            } else {
+                data.nickname
+            },
             title: data.title,
             content: data.content,
             board: board.clone(),
-            timestamp: SystemTime::now(),
+            timestamp: current_timestamp(),
             image_1: paths.get(0).cloned(),
             image_2: paths.get(1).cloned(),
             image_3: paths.get(2).cloned(),
@@ -174,7 +192,7 @@ pub async fn make_comment(
     )
     .await?;
 
-    Ok(Redirect::to(&format!("/boards/{board}/{parent_thread}")))
+    Ok(Redirect::to(&format!("/{board}/{parent_thread}")))
 }
 
 async fn persist_thread_images(
@@ -182,33 +200,29 @@ async fn persist_thread_images(
 ) -> anyhow::Result<Vec<String>, AppError> {
     use std::io::{BufReader, Read, Seek, SeekFrom};
 
-    const IMAGE_SIZE_THRESHOLD: u64 = 1024 * 500; // 500KB
+    const IMAGE_SIZE_THRESHOLD: u64 = 1024 * 200; // 200KB
     let mut paths = Vec::with_capacity(3);
 
     for image in images {
-        let image_path = image.path();
-
-        let Ok(image) = std::fs::File::open(image_path) else {
-            continue;
-        };
-
-        let image_size = image.metadata()?.len();
-        if image_size == 0 {
+        let image_size = image.as_file().metadata()?.len();
+        if image_size < 32 {
             continue;
         }
 
         let mut image = BufReader::new(image);
 
-        let mut format_buffer = [0; 64];
-        image.read_exact(&mut format_buffer)?;
-        let image_format = image::guess_format(&format_buffer)?;
+        let mut format_buffer = [0; 32];
+        unsafe {
+            // SAFETY: file size is already checked
+            image.read_exact(&mut format_buffer).unwrap_unchecked();
+        }
+        let image_format = image::guess_format(&format_buffer).context("invalid image format")?;
 
         image.seek(SeekFrom::Start(0))?;
         let image = image::load(image, image_format)?;
 
-        let id = nanoid::nanoid!();
-        let new_path = format!("public/{id}");
-        let f = std::fs::File::create(new_path)?;
+        let new_path = format!("public/{}", nanoid::nanoid!());
+        let f = std::fs::File::create(&new_path)?;
 
         let compression = if image_size >= IMAGE_SIZE_THRESHOLD {
             image::codecs::webp::WebPQuality::lossy(50)
@@ -217,9 +231,13 @@ async fn persist_thread_images(
         };
 
         let encoder = image::codecs::webp::WebPEncoder::new_with_quality(f, compression);
-        image.write_with_encoder(encoder)?;
 
-        paths.push(id);
+        // TODO: save the images somewhere else
+        image
+            .write_with_encoder(encoder)
+            .context("failed to save file")?;
+
+        paths.push(new_path);
     }
 
     Ok(paths)

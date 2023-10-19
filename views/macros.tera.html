@@ -1,23 +1,36 @@
-{% macro thread(thread) %}
-<div>
+{% macro thread(thread, board) %}
+<div style="border: 1px solid gainsboro; padding: 1rem">
   <header>
+    <h3>{{ thread.title }}</h3>
     <nav>
-      <ul style="display: flex; gap: 1rem">
-        <li>{{ thread.id }}</li>
-        <li>{{ thread.timestamp }}</li>
+      <ul style="display: flex; gap: 1rem; list-style: none">
+        <li style="color: cyan">>> {{ thread.nickname }}</li>
+        <li style="color: green">>> {{ thread.id }}</li>
+        <li style="color: purple">>> {{ thread.timestamp }}</li>
       </ul>
     </nav>
-    <h3>{{ thread.title }}</h3>
   </header>
-  <div>
-    <div>
-      <img src="/{{ thread.image_1 }}" />
-      <img src="/{{ thread.image_2 }}" />
-      <img src="/{{ thread.image_3 }}" />
+  <div style="display: flex; gap: 1rem">
+    <div style="display: flex">
+      {% if thread.image_1 %}
+      <img class="thread-img" src="/{{ thread.image_1 }}" height="256" />
+      {% endif %}
+      <div style="display: grid">
+        {% if thread.image_2 %}
+        <img class="thread-img" src="/{{ thread.image_2 }}" height="128" />
+        {% endif %}
+        <!---->
+        {% if thread.image_3 %}
+        <img class="thread-img" src="/{{ thread.image_3 }}" height="128" />
+        {% endif %}
+      </div>
     </div>
 
     <p>{{ thread.content }}</p>
   </div>
+  <a href="/{{ board.slug }}/{{ thread.id }}">
+    <button style="margin-top: 1rem" class="btn">view thread</button>
+  </a>
 </div>
 {% endmacro %}
 <!---->
@@ -26,7 +39,7 @@
   <a href="/">Π</a>
   <a href="/rules">rules</a>
   {% for board in boards %}
-  <a href="/boards/{{ board.slug }}">{{ board.name }}</a>
+  <a href="/{{ board.slug }}">{{ board.name }}</a>
   {% endfor %}
 </nav>
 {% endmacro %}
