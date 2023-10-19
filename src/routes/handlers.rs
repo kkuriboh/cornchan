@@ -180,24 +180,45 @@ pub async fn make_comment(
 async fn persist_thread_images(
     images: [NamedTempFile; 3],
 ) -> anyhow::Result<Vec<String>, AppError> {
+    use std::io::{BufReader, Read, Seek, SeekFrom};
+
+    const IMAGE_SIZE_THRESHOLD: u64 = 1024 * 500; // 500KB
     let mut paths = Vec::with_capacity(3);
 
     for image in images {
         let image_path = image.path();
 
-        if tokio::fs::read(image_path)
-            .await
-            .as_ref()
-            .map_or(0, Vec::len)
-            == 0
-        {
+        let Ok(image) = std::fs::File::open(image_path) else {
+            continue;
+        };
+
+        let image_size = image.metadata()?.len();
+        if image_size == 0 {
             continue;
         }
 
-        // TODO: persist this somewhere else
+        let mut image = BufReader::new(image);
+
+        let mut format_buffer = [0; 64];
+        image.read_exact(&mut format_buffer)?;
+        let image_format = image::guess_format(&format_buffer)?;
+
+        image.seek(SeekFrom::Start(0))?;
+        let image = image::load(image, image_format)?;
+
         let id = nanoid::nanoid!();
         let new_path = format!("public/{id}");
-        tokio::fs::copy(image_path, new_path).await?;
+        let f = std::fs::File::create(new_path)?;
+
+        let compression = if image_size >= IMAGE_SIZE_THRESHOLD {
+            image::codecs::webp::WebPQuality::lossy(50)
+        } else {
+            image::codecs::webp::WebPQuality::default()
+        };
+
+        let encoder = image::codecs::webp::WebPEncoder::new_with_quality(f, compression);
+        image.write_with_encoder(encoder)?;
+
         paths.push(id);
     }
 

@@ -9,7 +9,7 @@ edition = "2021"
 anyhow = "1.0.75"
 axum = { version = "0.6.20", features = ["tracing", "multipart"] }
 axum_typed_multipart = "0.10.0"
-# image = "0.24.7"
+image = { version = "0.24.7", features = ["webp", "webp-encoder"] }
 nanoid = "0.4.0"
 redis = { version = "0.23.3", features = ["tokio-rustls-comp"] }
 serde = { version = "1.0.189", features = ["derive"] }
